@@ -3,3 +3,6 @@
 
 # "Compiled" Python
 *.pyc
+
+# Local gym_torcs pip installation
+/gym_torcs.egg-info/
