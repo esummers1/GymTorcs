@@ -191,8 +191,13 @@ class Client():
                 sockdata,addr= self.so.recvfrom(data_size)
                 sockdata = sockdata.decode('utf-8')
             except socket.error as emsg:
-                print("Waiting for server on %d............" % self.port)
-                print("Count Down : " + str(n_fail))
+
+                ####################################################################################
+                # Eddie: shouldn't really suppress this, but it's nicer for terminal output
+                # print("Waiting for server on %d............" % self.port)
+                # print("Count Down : " + str(n_fail))
+                ####################################################################################
+
                 if n_fail < 0:
                     #Kill eventually existing process of the current TorcsEnv process
                     if self.torcs_process_id is not None:
@@ -260,7 +265,12 @@ class Client():
 
             identify = '***identified***'
             if identify in sockdata:
-                print("Client connected on %d.............." % self.port)
+
+                ####################################################################################
+                # Eddie: shouldn't really suppress this, but it's nicer for terminal output
+                # print("Client connected on %d.............." % self.port)
+                ####################################################################################
+
                 break
 
     def parse_the_command_line(self):
@@ -318,7 +328,12 @@ class Client():
                 print('.', end=' ')
                 #print "Waiting for data on %d.............." % self.port
             if '***identified***' in sockdata:
-                print("Client connected on %d.............." % self.port)
+
+                ####################################################################################
+                # Eddie: shouldn't really suppress this, but it's nicer for terminal output
+                # print("Client connected on %d.............." % self.port)
+                ####################################################################################
+
                 continue
             elif '***shutdown***' in sockdata:
                 print((("Server has stopped the race on %d. "+
