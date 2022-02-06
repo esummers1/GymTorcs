@@ -18,7 +18,8 @@ from xml.etree import ElementTree as ET
 
 DEF_BOX_DTYPE = np.float32
 
-class TorcsEnv( gym.Env):
+
+class TorcsEnv(gym.Env):
     terminal_judge_start = 50.  # Speed limit is applied after this step
     termination_limit_progress = 1  # [km/h], episode terminates if car is running slower than this limit
     default_speed = 300.
@@ -27,31 +28,32 @@ class TorcsEnv( gym.Env):
 
     # Customized to accept more params
     def __init__(self, vision=False,
-        throttle=False,
-        gear_change=False,
-        race_config_path=None,
-        race_speed=1.0,
-        rendering=True,
-        damage=False,
-        lap_limiter=1,
-        recdata=False,
-        noisy=False,
-        rec_episode_limit=1,
-        rec_timestep_limit=3600,
-        rec_index=0,
-        hard_reset_interval=11,
-        randomisation=False,
-        profile_reuse_ep=500,
-        rank=0,
-        obs_vars=None,
-        obs_preprocess_fn=None,
-        obs_normalization=True):
+                 throttle=False,
+                 gear_change=False,
+                 race_config_path=None,
+                 race_speed=1.0,
+                 rendering=True,
+                 damage=False,
+                 lap_limiter=1,
+                 recdata=False,
+                 noisy=False,
+                 rec_episode_limit=1,
+                 rec_timestep_limit=3600,
+                 rec_index=0,
+                 hard_reset_interval=11,
+                 randomisation=False,
+                 profile_reuse_ep=500,
+                 rank=0,
+                 obs_vars=None,
+                 obs_preprocess_fn=None,
+                 obs_normalization=True):
 
         # Set default observations first
         # Define mins and maxes for each obseration
-        self.obs_maxima = { 'focus': 200.,
+        self.obs_maxima = {
+            'focus': 200.,
             'speedX': 300., 'speedY': 300., 'speedZ': 300.,
-            'angle': math.pi, 'damage':10000,
+            'angle': math.pi, 'damage': 10000,
             'opponents': 200.,
             'rpm': 10000.,
             'track': 200.,
@@ -60,9 +62,13 @@ class TorcsEnv( gym.Env):
             "lap": 100,
             "img": 255
         }
-        self.obs_minima = {'focus': 0.,
-            'speedX': 0., 'speedY': 0., 'speedZ': 0.,
-            'angle': 0., 'damage':0.,
+        self.obs_minima = {
+            'focus': 0.,
+            'speedX': 0.,
+            'speedY': 0.,
+            'speedZ': 0.,
+            'angle': 0.,
+            'damage': 0.,
             'opponents': 0.,
             'rpm': 0.,
             'track': 0.,
@@ -86,7 +92,8 @@ class TorcsEnv( gym.Env):
             "lap": np.uint8,
             "img": np.uint8
         }
-        self.obs_dim = {'focus': 5,
+        self.obs_dim = {
+            'focus': 5,
             'speedX': 1, 'speedY': 1, 'speedZ': 1,
             'angle': 1, 'damage': 1,
             'opponents': 36,
@@ -100,7 +107,8 @@ class TorcsEnv( gym.Env):
         }
 
         if obs_vars is None:
-            self.obs_vars = ['focus',
+            self.obs_vars = [
+                'focus',
                 'speedX', 'speedY', 'speedZ',
                 'angle', 'damage',
                 'opponents',
@@ -108,17 +116,18 @@ class TorcsEnv( gym.Env):
                 'track',
                 'trackPos',
                 'wheelSpinVel',
-                "lap"]
+                "lap"
+            ]
             if vision:
-                self.obs_vars.append( 'img')
+                self.obs_vars.append('img')
         else:
             # TODO Add assertiong to check that the passed obs_vars are actually valid
             if (not vision and 'img' in obs_vars):
-                print( "WARNING: Vision disabled but included in custon observation variables.")
-                obs_vars.remove( 'img')
-            if vision and  'img' not in obs_vars:
-                pring( "WARNING: Vision enabled but not included in custom observation variables.")
-                obs_vars.append( 'img')
+                print("WARNING: Vision disabled but included in custon observation variables.")
+                obs_vars.remove('img')
+            if vision and 'img' not in obs_vars:
+                print("WARNING: Vision enabled but not included in custom observation variables.")
+                obs_vars.append('img')
 
             self.obs_vars = obs_vars
             # print( "Self obs vars:", self.obs_vars)
@@ -129,34 +138,36 @@ class TorcsEnv( gym.Env):
 
         # Set the default raceconfig file
         if race_config_path is None:
-            race_config_path = os.path.join( os.path.dirname(os.path.realpath(__file__)),
-                "raceconfigs/default.xml")
+            race_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                            "raceconfigs/default.xml")
 
-        #OpenAI Gym - Baselines and SubVecEnv compat fix
+        # OpenAI Gym - Baselines and SubVecEnv compat fix
         self.seed_value = 42
 
         if len(self.obs_vars) == 1 and self.obs_vars[0] == "img":
             # VIsion only as observation
-            self.observation_space = spaces.Box(low=0, high=255, shape=( 64, 64 ,3), dtype=np.uint8)
+            self.observation_space = spaces.Box(low=0, high=255, shape=(64, 64, 3), dtype=np.uint8)
         else:
-            high = np.hstack([ [self.obs_maxima[obs_name]] * self.obs_dim[obs_name] for obs_name in self.obs_vars])
-            low = np.hstack([ [self.obs_minima[obs_name]] * self.obs_dim[obs_name] for obs_name in self.obs_vars])
+            high = np.hstack([[self.obs_maxima[obs_name]] * self.obs_dim[obs_name] for obs_name in
+                              self.obs_vars])
+            low = np.hstack([[self.obs_minima[obs_name]] * self.obs_dim[obs_name] for obs_name in
+                             self.obs_vars])
 
-            self.observation_space = spaces.Box( low=low, high=high, dtype=DEF_BOX_DTYPE)
+            self.observation_space = spaces.Box(low=low, high=high, dtype=DEF_BOX_DTYPE)
 
         # Action spaces
         if throttle and gear_change:
-            self.action_space = spaces.Box( low=np.array( [-1., -1., -1]),
-                high=np.array( [1., 1., 6]),
-                dtype=[np.float32, np.float32, np.int32])
+            self.action_space = spaces.Box(low=np.array([-1., -1., -1]),
+                                           high=np.array([1., 1., 6]),
+                                           dtype=[np.float32, np.float32, np.int32])
         elif throttle:
             # Steeing and accel / decel
-            self.action_space = spaces.Box( low=np.array( [-1., -1.]),
-                high=np.array( [1., 1.]), dtype=np.float32)
+            self.action_space = spaces.Box(low=np.array([-1., -1.]),
+                                           high=np.array([1., 1.]), dtype=np.float32)
         else:
             # Steering only
-            self.action_space = spaces.Box( low=np.array( [-1.]),
-                high=np.array( [1.]), dtype=np.float32)
+            self.action_space = spaces.Box(low=np.array([-1.]),
+                                           high=np.array([1.]), dtype=np.float32)
 
         # Observation spaces
         # TODO: If time: Make this part configurable with obs list support and order Also
@@ -208,43 +219,43 @@ class TorcsEnv( gym.Env):
         self.rec_index = rec_index
 
         ##print("launch torcs")
-        #Just to be sure
+        # Just to be sure
         args = ["torcs", "-nofuel", "-nolaptime",
-            "-a", str( self.race_speed)]
+                "-a", str(self.race_speed)]
 
         if self.damage:
-            args.append( "-nodamage")
+            args.append("-nodamage")
 
         if self.noisy:
-            args.append( "-noisy")
+            args.append("-noisy")
 
         if self.vision:
-            args.append( "-vision")
+            args.append("-vision")
 
         if not self.rendering:
-            args.append( "-T") # Run in console
+            args.append("-T")  # Run in console
 
         if self.race_config_path is not None:
-            args.append( "-raceconfig")
+            args.append("-raceconfig")
             # args.append( "\"" + race_config_path + "\"")
-            args.append( self.race_config_path)
+            args.append(self.race_config_path)
 
         if self.recdata:
-            args.append( "-rechum %d" % self.rec_index)
-            args.append( "-recepisodelim %d" % self.rec_episode_limit)
-            args.append( "-rectimesteplim %d" % self.rec_timestep_limit)
+            args.append("-rechum %d" % self.rec_index)
+            args.append("-recepisodelim %d" % self.rec_episode_limit)
+            args.append("-rectimesteplim %d" % self.rec_timestep_limit)
 
         # For parallelization support
-        args.append( "-p %d" % self.server_port)
+        args.append("-p %d" % self.server_port)
         args.append("&")
 
         # print( "##### DEBUG: Args in init_torcs")
         # print( args)
 
-        #Workaround: Sometimes the process has to be killed in them
-        #SnakeOil3 file so we use the process_pid instead of the process object
-        #my apologies
-        self.torcs_process_id = subprocess.Popen( args, shell=False).pid
+        # Workaround: Sometimes the process has to be killed in them
+        # SnakeOil3 file so we use the process_pid instead of the process object
+        # my apologies
+        self.torcs_process_id = subprocess.Popen(args, shell=False).pid
 
         """
         # Modify here if you use multiple tracks in the environment
@@ -261,86 +272,89 @@ class TorcsEnv( gym.Env):
         # Desc: Randomizes the init positions of the bots, and luckily the agents
         # TODO: Randomize training tracks
         if self.profile_reuse_count == 0 or self.profile_reuse_count % self.profile_reuse_ep == 0:
-            track_length = 2700 # Extract form torcs maybe
-            max_pos_length = int(.7 * track_length) # Floor to 100 tile
-            agent_init = random.randint(0,20) * 10
-            bot_count = random.randint(1,10)
+            track_length = 2700  # Extract form torcs maybe
+            max_pos_length = int(.7 * track_length)  # Floor to 100 tile
+            agent_init = random.randint(0, 20) * 10
+            bot_count = random.randint(1, 10)
             min_bound = agent_init + 50
             max_leap = math.floor((max_pos_length - min_bound) / bot_count / 100) * 100
             bot_init_poss = []
             for _ in range(bot_count):
-                bot_init_poss.append( random.randint( min_bound, min_bound + max_leap))
+                bot_init_poss.append(random.randint(min_bound, min_bound + max_leap))
                 # Random generate in range minbound and max pos length with max leap
                 min_bound += max_leap
 
             # Check for random config file folder and create if not exists
-            randconf_dir = os.path.join(  os.path.dirname(os.path.abspath(__file__)),
-                "rand_raceconfigs")
+            randconf_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "rand_raceconfigs")
             if not os.path.isdir(randconf_dir):
                 os.mkdir(randconf_dir)
             randconf_filename = "agent_randfixed_%d" % agent_init
             for bot_idx in bot_init_poss:
                 randconf_filename += "_%d" % bot_idx
             randconf_filename += ".xml"
-            if not os.path.isfile( os.path.join( randconf_dir, randconf_filename)):
+            if not os.path.isfile(os.path.join(randconf_dir, randconf_filename)):
                 # Create Fielk config based on xml template
                 tree = None
                 root = None
-                with open( os.path.join( randconf_dir, "agent_randfixed_tmplt.xml")) as tmplt_f:
-                    tree = ET.parse( tmplt_f)
+                with open(os.path.join(randconf_dir, "agent_randfixed_tmplt.xml")) as tmplt_f:
+                    tree = ET.parse(tmplt_f)
                     root = tree.getroot()
 
                 driver_node = None
 
                 driver_section = root.find(".//section[@name='Drivers']")
-                driver_section.append( ET.Element( "attnum",
-                    { "name": "maximum_number", "val": "%d" % (1+ bot_count)}))
-                driver_section.append( ET.Element( "attstr",
-                    { "name": "focused module", "val": "scr_server" }))
-                driver_section.append( ET.Element( "attnum",
-                    { "name": "focused idx", "val": "1" }))
+                driver_section.append(ET.Element("attnum",
+                                                 {"name": "maximum_number",
+                                                  "val": "%d" % (1 + bot_count)}))
+                driver_section.append(ET.Element("attstr",
+                                                 {"name": "focused module", "val": "scr_server"}))
+                driver_section.append(ET.Element("attnum",
+                                                 {"name": "focused idx", "val": "1"}))
 
                 # # Add Scr Server
-                agent_section = ET.Element( "section",
-                    { "name": "%d" % (1)})
-                agent_section.append( ET.Element( "attnum",
-                    { "name": "idx", "val": "%d" % (0) }))
-                agent_section.append( ET.Element( "attstr",
-                    { "name": "module", "val": "scr_server" }))
-                driver_section.append( agent_section)
+                agent_section = ET.Element("section",
+                                           {"name": "%d" % (1)})
+                agent_section.append(ET.Element("attnum",
+                                                {"name": "idx", "val": "%d" % (0)}))
+                agent_section.append(ET.Element("attstr",
+                                                {"name": "module", "val": "scr_server"}))
+                driver_section.append(agent_section)
 
-                driver_section.append( ET.Element( "attnum",
-                    { "name": "initdist_%d" % (1), "val": "%d" % agent_init}))
+                driver_section.append(ET.Element("attnum",
+                                                 {"name": "initdist_%d" % (1),
+                                                  "val": "%d" % agent_init}))
 
-                for bot_idx, bot_init_pos in enumerate( bot_init_poss):
-                    bot_section = ET.Element( "section",
-                        { "name": "%d" % (2+bot_idx)})
-                    bot_section.append( ET.Element( "attnum",
-                        { "name": "idx", "val": "%d" % (2+bot_idx) }))
-                    bot_section.append( ET.Element( "attstr",
-                        { "name": "module", "val": "fixed" }))
-                    driver_section.append( bot_section)
-                    driver_section.append( ET.Element( "attnum",
-                        { "name": "initdist_%d" % (bot_idx+1), "val": "%d" % bot_init_pos}))
+                for bot_idx, bot_init_pos in enumerate(bot_init_poss):
+                    bot_section = ET.Element("section",
+                                             {"name": "%d" % (2 + bot_idx)})
+                    bot_section.append(ET.Element("attnum",
+                                                  {"name": "idx", "val": "%d" % (2 + bot_idx)}))
+                    bot_section.append(ET.Element("attstr",
+                                                  {"name": "module", "val": "fixed"}))
+                    driver_section.append(bot_section)
+                    driver_section.append(ET.Element("attnum",
+                                                     {"name": "initdist_%d" % (bot_idx + 1),
+                                                      "val": "%d" % bot_init_pos}))
 
                 randconf_savedir = "/tmp/randconf_dir_gymtorcs"
-                if not os.path.isdir( randconf_savedir):
-                    os.mkdir( randconf_savedir)
-                randconf_abspath = os.path.join( randconf_savedir, randconf_filename)
-                tree.write( randconf_abspath)
+                if not os.path.isdir(randconf_savedir):
+                    os.mkdir(randconf_savedir)
+                randconf_abspath = os.path.join(randconf_savedir, randconf_filename)
+                tree.write(randconf_abspath)
 
                 self.race_config_path = randconf_abspath
                 self.profile_reuse_count = 1
 
-    def seed( self, seed_value=42):
+    def seed(self, seed_value=42):
         self.seed_value = seed_value
 
     def step(self, u):
-       #print("Step")
+        # print("Step")
         # convert thisAction to the actual torcs actionstr
         client = self.client
 
-        this_action = self.agent_to_torcs( u)
+        this_action = self.agent_to_torcs(u)
 
         # Apply Action
         action_torcs = client.R.d
@@ -351,7 +365,7 @@ class TorcsEnv( gym.Env):
         #  Simple Autnmatic Throttle Control by Snakeoil
         if self.throttle is False:
             target_speed = self.default_speed
-            if client.S.d['speedX'] < target_speed - (client.R.d['steer']*50):
+            if client.S.d['speedX'] < target_speed - (client.R.d['steer'] * 50):
                 client.R.d['accel'] += .01
             else:
                 client.R.d['accel'] -= .01
@@ -360,11 +374,11 @@ class TorcsEnv( gym.Env):
                 client.R.d['accel'] = 0.2
 
             if client.S.d['speedX'] < 10:
-                client.R.d['accel'] += 1/(client.S.d['speedX']+.1)
+                client.R.d['accel'] += 1 / (client.S.d['speedX'] + .1)
 
             # Traction Control System
-            if ((client.S.d['wheelSpinVel'][2]+client.S.d['wheelSpinVel'][3]) -
-               (client.S.d['wheelSpinVel'][0]+client.S.d['wheelSpinVel'][1]) > 5):
+            if ((client.S.d['wheelSpinVel'][2] + client.S.d['wheelSpinVel'][3]) -
+                (client.S.d['wheelSpinVel'][0] + client.S.d['wheelSpinVel'][1]) > 5):
                 action_torcs['accel'] -= .2
         else:
             action_torcs['accel'] = this_action['accel']
@@ -403,10 +417,10 @@ class TorcsEnv( gym.Env):
 
         # Reward setting Here #######################################
         # direction-dependent positive reward
-        #track = np.array(obs['track'])
-        #sp = np.array(obs['speedX'])
-        #progress = sp*np.cos(obs['angle'])
-        #reward = progress
+        # track = np.array(obs['track'])
+        # sp = np.array(obs['speedX'])
+        # progress = sp*np.cos(obs['angle'])
+        # reward = progress
 
         track = np.array(obs['track'])
         trackPos = np.array(obs['trackPos'])
@@ -414,8 +428,8 @@ class TorcsEnv( gym.Env):
         damage = np.array(obs['damage'])
         rpm = np.array(obs['rpm'])
 
-        #progress = sp*np.cos(obs['angle']) - np.abs(sp*np.sin(obs['angle'])) - sp * np.abs(obs['trackPos'])
-        progress = sp*np.cos(obs['angle'])
+        # progress = sp*np.cos(obs['angle']) - np.abs(sp*np.sin(obs['angle'])) - sp * np.abs(obs['trackPos'])
+        progress = sp * np.cos(obs['angle'])
         reward = progress
 
         # collision detection
@@ -431,20 +445,20 @@ class TorcsEnv( gym.Env):
             episode_terminate = True
             client.R.d['meta'] = True
 
-        if self.terminal_judge_start < self.time_step: # Episode terminates if the progress of agent is small
+        if self.terminal_judge_start < self.time_step:  # Episode terminates if the progress of agent is small
             if progress < self.termination_limit_progress:
                 episode_terminate = True
                 client.R.d['meta'] = True
 
-        if np.cos(obs['angle']) < 0: # Episode is terminated if the agent runs backward
+        if np.cos(obs['angle']) < 0:  # Episode is terminated if the agent runs backward
             episode_terminate = True
             client.R.d['meta'] = True
 
-        if int( obs["lap"]) > self.lap_limiter:
+        if int(obs["lap"]) > self.lap_limiter:
             episode_terminate = True
             client.R.d['meta'] = True
 
-        if client.R.d['meta'] is True: # Send a reset signal
+        if client.R.d['meta'] is True:  # Send a reset signal
             self.initial_run = False
             client.respond_to_server()
 
@@ -453,32 +467,34 @@ class TorcsEnv( gym.Env):
         return self.get_obs(), reward, client.R.d['meta'], {}
 
     def reset(self, relaunch=False):
-        #print("Reset")
+        # print("Reset")
 
         self.time_step = 0
         if self.initial_reset is not True:
             self.client.R.d['meta'] = True
             self.client.respond_to_server()
 
-            ## TENTATIVE. Restarting TORCS every episode suffers the memory leak bug!
+            # TENTATIVE. Restarting TORCS every episode suffers the memory leak bug!
             if relaunch is True or self.reset_ep_count % self.hard_reset_interval == 0:
                 self.reset_torcs()
                 self.reset_ep_count = 1
                 print("### TORCS is RELAUNCHED ###")
 
         # Modify here if you use multiple tracks in the environment
-        ### dosssman: Pass existing process id and race config path
+        # dosssman: Pass existing process id and race config path
         if self.randomisation:
             self.randomise_track()
 
         self.client = snakeoil3.Client(p=self.server_port, vision=self.vision,
-            process_id=self.torcs_process_id,
-            race_config_path=self.race_config_path,
-            race_speed=self.race_speed,
-            rendering=self.rendering, lap_limiter=self.lap_limiter,
-            damage=self.damage, recdata=self.recdata, noisy=self.noisy,
-            rec_index = self.rec_index,rec_episode_limit=self.rec_episode_limit,
-            rec_timestep_limit=self.rec_timestep_limit, rank=self.rank)  #Open new UDP in vtorcs
+                                       process_id=self.torcs_process_id,
+                                       race_config_path=self.race_config_path,
+                                       race_speed=self.race_speed,
+                                       rendering=self.rendering, lap_limiter=self.lap_limiter,
+                                       damage=self.damage, recdata=self.recdata, noisy=self.noisy,
+                                       rec_index=self.rec_index,
+                                       rec_episode_limit=self.rec_episode_limit,
+                                       rec_timestep_limit=self.rec_timestep_limit,
+                                       rank=self.rank)  # Open new UDP in vtorcs
 
         self.client.MAX_STEPS = np.inf
 
@@ -506,11 +522,11 @@ class TorcsEnv( gym.Env):
         # TODO:  Kill process by PID
         if self.torcs_process_id is not None:
             try:
-                p = psutil.Process( self.torcs_process_id)
-                #Kill children... yes
+                p = psutil.Process(self.torcs_process_id)
+                # Kill children... yes
                 for pchild in p.children():
                     pchild.terminate()
-                #Then kill itself
+                # Then kill itself
                 p.terminate()
             except Exception:
                 self.torcs_process_id = None
@@ -522,54 +538,59 @@ class TorcsEnv( gym.Env):
         return self.observation
 
     def reset_torcs(self):
-        print( "Process PID: ", self.torcs_process_id)
+        print("Process PID: ", self.torcs_process_id)
         if self.torcs_process_id is not None:
             try:
-                p = psutil.Process( self.torcs_process_id)
-                #Kill children... yes
+                p = psutil.Process(self.torcs_process_id)
+                # Kill children... yes
                 for pchild in p.children():
                     pchild.terminate()
-                #Then kill itself
+                # Then kill itself
                 p.terminate()
             except Exception:
                 ### TODO: Eventually FIGURE out what's woong
-                #Hint:the process seems to already have beenkilled somewhereelse
+                # Hint:the process seems to already have beenkilled somewhereelse
                 pass
-            #Sad life to be a process
+            # Sad life to be a process
 
         if self.randomisation:
             self.randomise_track()
 
-        args = ["torcs", "-nofuel", "-nolaptime",
-            "-a", str( self.race_speed)]
+        args = [
+            "torcs",
+            "-nofuel",
+            "-nolaptime",
+            "-a",
+            str(self.race_speed)
+        ]
 
         if self.damage:
-            args.append( "-nodamage")
+            args.append("-nodamage")
 
         if self.noisy:
-            args.append( "-noisy")
+            args.append("-noisy")
 
         if self.vision:
-            args.append( "-vision")
+            args.append("-vision")
 
         if not self.rendering:
-            args.append( "-T") # Run in console
+            args.append("-T")  # Run in console
 
         if self.race_config_path is not None:
-            args.append( "-raceconfig")
+            args.append("-raceconfig")
             # args.append( "\"" + race_config_path + "\"")
-            args.append( self.race_config_path)
+            args.append(self.race_config_path)
 
         if self.recdata:
-            args.append( "-rechum %d" % self.rec_index)
-            args.append( "-recepisodelim %d" % self.rec_episode_limit)
-            args.append( "-rectimesteplim %d" % self.rec_timestep_limit)
+            args.append("-rechum %d" % self.rec_index)
+            args.append("-recepisodelim %d" % self.rec_episode_limit)
+            args.append("-rectimesteplim %d" % self.rec_timestep_limit)
 
-        args.append( "-p %d" % self.server_port)
+        args.append("-p %d" % self.server_port)
         args.append("&")
         # print( "##### DEBUG: Args in reset_torcs")
         # print( args)
-        self.torcs_process_id = subprocess.Popen( args, shell=False).pid
+        self.torcs_process_id = subprocess.Popen(args, shell=False).pid
 
     def agent_to_torcs(self, u):
         torcs_action = {'steer': u[0]}
@@ -577,22 +598,22 @@ class TorcsEnv( gym.Env):
         if self.throttle is True:  # throttle action is enabled
             torcs_action.update({'accel': u[1]})
 
-        if self.gear_change is True: # gear change action is enabled
+        if self.gear_change is True:  # gear change action is enabled
             torcs_action.update({'gear': u[2]})
 
         return torcs_action
 
     def obs_vision_to_image_rgb(self, obs_image_vec):
-        image_vec =  obs_image_vec
+        image_vec = obs_image_vec
         rgb = []
         temp = []
         # convert size 64x64x3 = 12288 to 64x64=4096 2-D list
         # with rgb values grouped together.
         # Format similar to the observation in openai gym
-        for i in range(0,12286,3):
+        for i in range(0, 12286, 3):
             temp.append(image_vec[i])
-            temp.append(image_vec[i+1])
-            temp.append(image_vec[i+2])
+            temp.append(image_vec[i + 1])
+            temp.append(image_vec[i + 2])
             rgb.append(temp)
             temp = []
         return np.array(rgb, dtype=np.uint8)
@@ -602,14 +623,17 @@ class TorcsEnv( gym.Env):
         for obs_name in self.obs_vars:
             if obs_name == "img":
                 image_rgb = self.obs_vision_to_image_rgb(raw_obs['img'])
-                rsh = np.reshape( image_rgb, [64, 64, 3])
+                rsh = np.reshape(image_rgb, [64, 64, 3])
                 dict_obs[obs_name] = rsh
             else:
                 dict_obs[obs_name] = raw_obs[obs_name]
                 if self.obs_normalization:
-                    dict_obs[obs_name] = np.array(raw_obs[obs_name], dtype=self.obs_dtypes[obs_name])/(self.obs_maxima[obs_name] - self.obs_minima[obs_name])
+                    dict_obs[obs_name] = np.array(raw_obs[obs_name],
+                                                  dtype=self.obs_dtypes[obs_name]) / (
+                                             self.obs_maxima[obs_name] - self.obs_minima[
+                                             obs_name])
 
-        if callable( self.obs_preprocess_fn):
-            return self.obs_preprocess_fn( dict_obs)
+        if callable(self.obs_preprocess_fn):
+            return self.obs_preprocess_fn(dict_obs)
 
         return dict_obs
