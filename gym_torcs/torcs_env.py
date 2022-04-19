@@ -432,11 +432,13 @@ class TorcsEnv(gym.Env):
         progress = sp * np.cos(obs['angle'])
         reward = progress
 
+        # Eddie: disabling this because it seems to happen at random times
         # collision detection
-        if obs['damage'] - obs_pre['damage'] > 0:
-            reward = - 1
-            episode_terminate = True
-            client.R.d['meta'] = True
+        # if obs['damage'] - obs_pre['damage'] > 0:
+        #     print("DAMAGE")
+        #     reward = - 1
+        #     episode_terminate = True
+        #     client.R.d['meta'] = True
 
         # Termination judgement #########################
         episode_terminate = False
